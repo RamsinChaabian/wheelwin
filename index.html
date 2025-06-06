@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گردونه شانس حرفه‌ای</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'vazir': ['Vazirmatn', 'sans-serif']
+                    },
+                    colors: {
+                        primary: '#5D5CDE',
+                        'primary-light': '#7B7AE8',
+                        'primary-dark': '#4A49B8'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            overflow: hidden; /* Prevent scrollbars */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .wheel-container {
+            filter: drop-shadow(0 25px 50px rgba(93, 92, 222, 0.35));
+        }
+        
+        .dark .wheel-container {
+            filter: drop-shadow(0 25px 50px rgba(93, 92, 222, 0.5));
+        }
+        
+        .spin-button {
+            background: linear-gradient(135deg, #5D5CDE, #7B7AE8);
+            box-shadow: 0 10px 30px rgba(93, 92, 222, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .spin-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(93, 92, 222, 0.6);
+        }
+        
+        .particle, .confetti {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+        }
+        
+        .confetti {
+            z-index: 1000;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 3s ease-in-out infinite;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #5D5CDE, #7B7AE8, #A855F7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass-effect {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900 transition-all duration-300">
+    
+    <!-- Background particles -->
+    <div id="particles" class="fixed inset-0 pointer-events-none z-0"></div>
+    
+    <!-- Main Wheel Section - Centered on the page -->
+    <div class="relative flex justify-center items-center">
+        <!-- Wheel Container -->
+        <div class="relative">
+            <div class="wheel-container pulse-animation">
+                <!-- Canvas is now even bigger -->
+                <canvas id="canvas" width="700" height="700" class="rounded-full"></canvas>
+            </div>
+            
+            <!-- Pointer -->
+            <div class="absolute rotate-180 top-0 left-1/2 transform -translate-x-1/2 -translate-y-4 z-20">
+                <div class="w-0 h-0 border-l-[30px] border-r-[30px] border-b-[60px] border-l-transparent border-r-transparent border-b-red-500 drop-shadow-lg"></div>
+            </div>
+            
+            <!-- Center decoration -->
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+                <div class="w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                    <div class="text-4xl">🎯</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Control Panel - Stays in the corner -->
+    <div class="fixed bottom-5 right-5 z-30">
+        <div id="control_panel" class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl glass-effect w-[320px] transition-all duration-300">
+            <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4 text-center">کنترل چرخ</h3>
+            <button id="spin_button" class="spin-button text-white text-lg font-bold py-3 px-6 rounded-2xl w-full mb-4 transform transition-all duration-300">🎪 چرخاندن گردونه</button>
+            <div class="mb-4">
+                <label class="block text-gray-700 dark:text-gray-300 font-semibold mb-2 text-sm">سرعت چرخش:</label>
+                <input type="range" id="speed_slider" min="1" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <div class="mb-4">
+                <h4 class="text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">قسمت‌های چرخ:</h4>
+                <div id="segments_list" class="space-y-2 max-h-24 overflow-y-auto"></div>
+                <div class="mt-2 flex gap-2">
+                    <input type="text" id="new_segment" placeholder="قسمت جدید..." class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <button id="add_segment" class="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">➕</button>
+                </div>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-3">
+                <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">آمار:</h4>
+                <div class="text-xs text-gray-600 dark:text-gray-400">
+                    <div>تعداد چرخش: <span id="spin_count">0</span></div>
+                    <div>آخرین برنده: <span id="last_winner">-</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+        
+    <!-- Result Display -->
+    <div id="result_container" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-md mx-4 text-center glass-effect">
+            <div class="text-6xl mb-4">🎉</div>
+            <h3 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">تبریک!</h3>
+            <p class="text-lg text-gray-600 dark:text-gray-300 mb-2">برنده شدید:</p>
+            <div id="winner_text" class="text-3xl font-bold gradient-text mb-6"></div>
+            <button id="close_result" class="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors">بستن</button>
+        </div>
+    </div>
+
+    <script>
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            document.documentElement.classList.toggle('dark', event.matches);
+        });
+
+        // Wheel configuration
+        let wheelSpinning = false;
+        let spinCount = 0;
+        let segments = [
+            { color: '#FF6B6B', text: 'جایزه ۱۰۰ هزار تومان', textColor: 'white' },
+            { color: '#4ECDC4', text: 'گوشی موبایل', textColor: 'white' },
+            { color: '#45B7D1', text: 'تبلت', textColor: 'white' },
+            { color: '#F7DC6F', text: 'هدفون', textColor: 'black' },
+            { color: '#BB8FCE', text: 'ساعت هوشمند', textColor: 'white' },
+            { color: '#82E0AA', text: 'لپ‌تاپ', textColor: 'black' },
+            { color: '#F8C471', text: 'دوربین', textColor: 'black' },
+            { color: '#85C1E9', text: 'کنسول بازی', textColor: 'white' }
+        ];
+        
+        // Canvas setup for the bigger wheel
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 320; // Increased radius for the 700x700 canvas
+        let currentRotation = 0;
+
+        // --- Event Listeners ---
+        document.getElementById('spin_button').addEventListener('click', startSpin);
+        document.getElementById('add_segment').addEventListener('click', addSegment);
+        document.getElementById('new_segment').addEventListener('keypress', e => e.key === 'Enter' && addSegment());
+        document.getElementById('close_result').addEventListener('click', () => document.getElementById('result_container').classList.add('hidden'));
+
+        // --- Core Functions ---
+        function drawWheel() {
+            const arc = (2 * Math.PI) / segments.length;
+            
+            segments.forEach((segment, i) => {
+                const startAngle = i * arc;
+                const endAngle = startAngle + arc;
+                
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.lineTo(centerX, centerY);
+                ctx.fillStyle = segment.color;
+                ctx.fill();
+                
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(startAngle + arc / 2);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = segment.textColor;
+                ctx.font = 'bold 20px Vazirmatn'; // Increased font size
+                
+                const text = segment.text;
+                const maxWidth = radius - 80; // Adjusted max width for text
+                const words = text.split(' ');
+                let lines = [];
+                let currentLine = '';
+                
+                for (let word of words) {
+                    const testLine = currentLine ? `${currentLine} ${word}` : word;
+                    if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                lines.push(currentLine);
+                
+                const lineHeight = 24; // Increased line height
+                const totalHeight = lines.length * lineHeight;
+                let startY = -totalHeight / 2 + lineHeight / 2;
+                lines.forEach((line, index) => {
+                    ctx.fillText(line, radius * 0.6, startY + (index * lineHeight));
+                });
+                
+                ctx.restore();
+            });
+
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 5; // Thicker lines for bigger wheel
+            segments.forEach((segment, i) => {
+                 const startAngle = i * arc;
+                 ctx.beginPath();
+                 ctx.moveTo(centerX, centerY);
+                 ctx.arc(centerX, centerY, radius, startAngle, startAngle + 0.01);
+                 ctx.lineTo(centerX, centerY);
+                 ctx.stroke();
+            });
+        }
+
+        function startSpin() {
+            if (wheelSpinning) return;
+            
+            const speed = parseInt(document.getElementById('speed_slider').value);
+            const duration = 6 - (speed * 0.4);
+            const spins = speed + 3;
+            
+            wheelSpinning = true;
+            document.getElementById('spin_button').disabled = true;
+            document.getElementById('spin_button').innerText = '🎪 در حال چرخش...';
+            
+            spinCount++;
+            document.getElementById('spin_count').innerText = spinCount;
+            createParticles();
+            
+            const randomAngle = Math.random() * (2 * Math.PI);
+            const finalAngle = (spins * 2 * Math.PI) + randomAngle;
+
+            let rotationProxy = { angle: currentRotation };
+
+            gsap.to(rotationProxy, {
+                angle: currentRotation + finalAngle,
+                duration: duration,
+                ease: "power3.out",
+                onUpdate: function() {
+                    const newRotation = rotationProxy.angle;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(newRotation);
+                    ctx.translate(-centerX, -centerY);
+                    drawWheel();
+                    ctx.restore();
+
+                    if (Math.random() < 0.1) playTickSound();
+                },
+                onComplete: function() {
+                    currentRotation = rotationProxy.angle;
+                    const segmentAngle = (2 * Math.PI) / segments.length;
+                    const effectiveAngle = ( (3 * Math.PI / 2) - (currentRotation % (2 * Math.PI)) + (2 * Math.PI) ) % (2 * Math.PI);
+                    const winnerIndex = Math.floor(effectiveAngle / segmentAngle);
+                    showPrize(segments[winnerIndex]);
+                }
+            });
+        }
+
+        function showPrize(segment) {
+            wheelSpinning = false;
+            document.getElementById('spin_button').disabled = false;
+            document.getElementById('spin_button').innerText = '🎪 چرخاندن گردونه';
+            document.getElementById('winner_text').innerText = segment.text;
+            document.getElementById('last_winner').innerText = segment.text;
+            document.getElementById('result_container').classList.remove('hidden');
+            createConfetti();
+            playWinSound();
+        }
+
+        function addSegment() {
+            const input = document.getElementById('new_segment');
+            const text = input.value.trim();
+            if (text) {
+                const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#F7DC6F', '#BB8FCE', '#82E0AA', '#F8C471', '#85C1E9'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                segments.push({
+                    color: randomColor,
+                    text: text,
+                    textColor: ['#F7DC6F', '#82E0AA', '#F8C471'].includes(randomColor) ? 'black' : 'white'
+                });
+                input.value = '';
+                updateSegmentsList();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(currentRotation);
+                ctx.translate(-centerX, -centerY);
+                drawWheel();
+                ctx.restore();
+            }
+        }
+
+        function removeSegment(index) {
+            if (segments.length > 2) {
+                segments.splice(index, 1);
+                updateSegmentsList();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(currentRotation);
+                ctx.translate(-centerX, -centerY);
+                drawWheel();
+                ctx.restore();
+            } else {
+                try { alert('گردونه باید حداقل ۲ قسمت داشته باشد.'); } catch(e) { console.log('گردونه باید حداقل ۲ قسمت داشته باشد.')}
+            }
+        }
+
+        function updateSegmentsList() {
+            const list = document.getElementById('segments_list');
+            list.innerHTML = '';
+            segments.forEach((segment, index) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between bg-gray-100 dark:bg-gray-600 rounded-lg px-3 py-1';
+                item.innerHTML = `
+                    <span class="text-xs text-gray-700 dark:text-gray-300">${segment.text}</span>
+                    <button onclick="removeSegment(${index})" class="text-red-500 hover:text-red-700 text-sm">❌</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+        
+        function playSound(dataUri, volume) {
+            try {
+                const audio = new Audio(dataUri);
+                audio.volume = volume;
+                audio.play().catch(() => {});
+            } catch(e) { console.error("Could not play audio.", e); }
+        }
+
+        function playTickSound() {
+            playSound("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSd2T19XDQoaCACAgLoLgoeGhiJ/dGg9gImJhWc7iIaAgJ+IhHwcf3aGhg5/d3d/dnt2b3Nqa2lpaGdmZmZlZGRkY2NjYmJiYWFhYGBgX19fXl5eXV1dXVxcXFtbW1paWlpaWVlZWFlYV1dXWVhYWFdXV1dXV1dYWFhYWFhYWFdYWFdXV1dXV1dYWFhXV1dXWFdXWFdYV1dYV1dYV1dYV1dYVw==", 0.1);
+        }
+
+        function playWinSound() {
+            playSound("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU3LjgyLjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAA//uQZAUAAAAAAAAAABASxAAAAANIAAAAASA9AAAAAAAAAAAQk4AAAABTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//uQZAUAAAAAAAAAAAAAAAAAAAAA//uQZAUAAAAAAAAAABASxAAAAANIAAAAASA9AAAAAAAAAAAlR4AAAABTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//u.lAAD/+5BkBgAAj9/t/5/4//uQZAYAAI/f7f+f+P/7kGQGAACT3+/DAAAA//uQZAYAAJff78MAAAD/+5BkBgAAoN/vwwAAAP/7kGQGAACo3+/DAAAA//uQZAYAAKzf78MAAAD/+5BkBgAAsN/vwwAAAP/7kGQGAACz3+/DAAAA//uQZAYAAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAACg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAAjg3/DAAAAAAAAAAAAAAAAAAAAAA//uQZAYCO4N/wwAAAAAAAAAAAAAAAAAAAAAD/+5BkBgI/g3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAn+Df8MAAAAAAAAAAAAAAAAAAAAAA//uQZAYCe4N/wwAAAAAAAAAAAAAAAAAAAAAD/+5BkBgJvg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAneDf8MAAAAAAAAAAAAAAAAAAAAAA//uQZAYCZ4N/wwAAAAAAAAAAAAAAAAAAAAAD/+5BkBgJrg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAlaDf8MAAAAAAAAAAAAAAAAAAAAAA//uQZAYCSYN/wwAAAAAAAAAAAAAAAAAAAAAD/+5BkBgJPg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAkODf8MAAAAAAAAAAAAAAAAAAAAAA//uQZAYCN4N/wwAAAAAAAAAAAAAAAAAAAAAD/+5BkBgI3g3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAjODf8MAAAAAAAAAAAAAAAAAAAAAA//uQZAYCM4N/wwAAAAAAAAAAAAAAAAAAAAAD/+5BkBgIrg3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAimDf8MAAAAAAAAAAAAAAAAAAAAAA//uQZAYCKYN/wwAAAAAAAAAAAAAAAAAAAAAD/+5BkBgIig3/DAAAAAAAAAAAAAAAAAAAAAAP/7kGQGAiCDf8MAAAAAAAAAAAAAAAAAAAAAA//uQZAQCfYAAAACAAADSAAAAADSAAAAAADSAAAAAAAAAAAAAAAAAAAAAAD/+5BkBAJ9gAAAAIAAAAAAAAAAAAAAAAAAADSAAAAAAAAAAAAAAAAAP/7kGQEAoGAAAAAgAAAAAAAAAAAAAAAAAAAA0gAAAAAAAAAAAAAAAA//uQZAUAAAAAAAAAABASxAAAAANIAAAAASA9AAAAAAAAAAA1R4AAAABTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV-", 0.3);
+        }
+
+        function createParticles() {
+            const wheel_div = document.querySelector('.wheel-container');
+            const container_rect = wheel_div.getBoundingClientRect();
+            
+            for (let i = 0; i < 50; i++) { // More particles for a bigger wheel
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                Object.assign(particle.style, {
+                    position: 'fixed',
+                    left: `${container_rect.left + container_rect.width / 2}px`,
+                    top: `${container_rect.top + container_rect.height / 2}px`,
+                    width: `${Math.random() * 10 + 5}px`,
+                    height: particle.style.width,
+                    backgroundColor: segments[Math.floor(Math.random() * segments.length)].color,
+                    opacity: '0.9'
+                });
+                
+                document.body.appendChild(particle);
+                
+                gsap.to(particle, {
+                    duration: 1.8,
+                    x: (Math.random() - 0.5) * 600,
+                    y: (Math.random() - 0.5) * 600,
+                    rotation: Math.random() * 360,
+                    opacity: 0,
+                    scale: 0,
+                    ease: "power2.out",
+                    onComplete: () => particle.remove()
+                });
+            }
+        }
+        
+        function createConfetti() {
+            const container = document.querySelector('body');
+            for (let i = 0; i < 150; i++) { // More confetti
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                 Object.assign(confetti.style, {
+                    left: `${Math.random() * 100}%`,
+                    top: '-20px',
+                    width: `${Math.random() * 12 + 6}px`,
+                    height: confetti.style.width,
+                    backgroundColor: segments[Math.floor(Math.random() * segments.length)].color,
+                    borderRadius: Math.random() > 0.5 ? '50%' : '0'
+                });
+                container.appendChild(confetti);
+                gsap.to(confetti, {
+                    duration: Math.random() * 5 + 4,
+                    y: window.innerHeight + 100,
+                    x: (Math.random() - 0.5) * 300,
+                    rotation: Math.random() * 720,
+                    ease: "power1.out",
+                    onComplete: () => confetti.remove()
+                });
+            }
+        }
+        
+        // --- Initialization ---
+        updateSegmentsList();
+        drawWheel();
+    </script>
+</body>
+</html>
